@@ -1,9 +1,16 @@
+import pygame
+import os
+
+pygame.mixer.init()
+
+
 class SongNode:
-    def __init__(self, id_song, title, artist, duration):
+    def __init__(self, id_song, title, artist, duration, file_path):
         self.id = id_song
         self.title = title
         self.artist = artist
         self.duration = duration
+        self.file_path = file_path
         self.next = None
         self.prev = None
 
@@ -12,12 +19,12 @@ class Playlist:
     def __init__(self):
         self.head = None
         self.tail = None
-
+        self.current = None
 
     # ========================
-    # CREATE
+    # TAMBAH LAGU
     # ========================
-    def add_song(self, id_song, title, artist, duration):
+    def add_song(self, id_song, title, artist, duration, file_path):
 
         if title.strip() == "" or artist.strip() == "":
             print("Judul dan artis tidak boleh kosong!")
@@ -30,7 +37,7 @@ class Playlist:
                 return
             current = current.next
 
-        new_song = SongNode(id_song, title, artist, duration)
+        new_song = SongNode(id_song, title, artist, duration, file_path)
 
         if self.head is None:
             self.head = new_song
@@ -44,7 +51,7 @@ class Playlist:
 
 
     # ========================
-    # READ (TABEL DINAMIS)
+    # TAMPILKAN PLAYLIST
     # ========================
     def show_playlist(self):
 
@@ -53,94 +60,71 @@ class Playlist:
             return
 
         current = self.head
-        songs = []
-
+        print("\n=== PLAYLIST ===")
         while current:
-            songs.append(current)
+            print(f"{current.id}. {current.title} - {current.artist} ({current.duration})")
             current = current.next
 
-        title_width = max(len(song.title) for song in songs)
-        artist_width = max(len(song.artist) for song in songs)
-
-        title_width = max(title_width, len("Judul"))
-        artist_width = max(artist_width, len("Artis"))
-
-        header = f"{'ID':<5} {'Judul':<{title_width}} {'Artis':<{artist_width}} {'Durasi':<15}"
-        table_width = len(header)
-
-        print("\n" + "=" * table_width)
-        print("PLAYLIST".center(table_width))
-        print("=" * table_width)
-
-        print(header)
-        print("-" * table_width)
-
-        for song in songs:
-            print(f"{song.id:<5} {song.title:<{title_width}} {song.artist:<{artist_width}} {song.duration} menit")
-
-
     # ========================
-    # UPDATE
+    # PLAY
     # ========================
-    def edit_song(self, id_song):
+    def play_song(self):
 
         if self.head is None:
             print("Playlist kosong.")
             return
 
-        current = self.head
+        if self.current is None:
+            self.current = self.head
 
-        while current:
+        try:
+            pygame.mixer.music.load(self.current.file_path)
+            pygame.mixer.music.play()
 
-            if current.id == id_song:
+            print("\n🎵 Now Playing:")
+            print(f"Judul  : {self.current.title}")
+            print(f"Artis  : {self.current.artist}")
+            print(f"Durasi : {self.current.duration} menit")
 
-                print("\nKosongkan jika tidak ingin mengubah")
+        except Exception as e:
+            print("Gagal memutar lagu:", e)
 
-                title = input("Judul baru: ")
-                artist = input("Artis baru: ")
+    # ========================
+    # NEXT
+    # ========================
+    def next_song(self):
 
-                while True:
-                    duration_input = input("Durasi baru (contoh: 03.30 menit): ")
+        if self.current is None:
+            print("Belum ada lagu diputar.")
+            return
 
-                    if duration_input == "":
-                        break
+        if self.current.next:
+            self.current = self.current.next
+        else:
+            self.current = self.head  # looping ke awal
 
-                    if "." in duration_input:
-                        try:
-                            menit, detik = duration_input.split(".")
-                            int(menit)
-                            int(detik)
-                            break
-                        except:
-                            print("Format durasi salah!")
-                    else:
-                        print("Gunakan format menit.detik (contoh 03.30)")
+        self.play_song()
 
-                if title != "":
-                    current.title = title
+    # ========================
+    # PREVIOUS
+    # ========================
+    def previous_song(self):
 
-                if artist != "":
-                    current.artist = artist
+        if self.current is None:
+            print("Belum ada lagu diputar.")
+            return
 
-                if duration_input != "":
-                    current.duration = duration_input
+        if self.current.prev:
+            self.current = self.current.prev
+        else:
+            self.current = self.tail  # looping ke akhir
 
-                print("Data lagu berhasil diperbarui!")
-                return
-
-            current = current.next
-
-        print("ID lagu tidak ditemukan.")
-
+        self.play_song()
 
     # ========================
     # DELETE
     # ========================
     def delete_song(self, id_song):
-
-        if self.head is None:
-            print("Playlist kosong.")
-            return
 
         current = self.head
 
@@ -150,7 +134,6 @@ class Playlist:
 
                 if current == self.head:
                     self.head = current.next
-
                     if self.head:
                         self.head.prev = None
                     else:
@@ -169,13 +152,27 @@ class Playlist:
 
             current = current.next
 
-        print("ID lagu tidak ditemukan.")
+        print("ID tidak ditemukan!")
+        
+    # ========================
+    # PAUSE / RESUME
+    # ========================
+    def pause_song(self):
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.pause()
+            print("⏸ Lagu di-pause")
+        else:
+            print("Tidak ada lagu yang sedang diputar.")
+
+
+    def resume_song(self):
+        pygame.mixer.music.unpause()
+        print("▶️ Lagu dilanjutkan")
 
 
 # ========================
 # PROGRAM UTAMA
 # ========================
-
 playlist = Playlist()
 
 while True:
@@ -183,64 +180,54 @@ while True:
     print("\n========== MENU PLAYLIST ==========")
     print("1. Tambah Lagu")
     print("2. Lihat Playlist")
-    print("3. Edit Lagu")
-    print("4. Hapus Lagu")
+    print("3. Hapus Lagu")
+    print("4. Play Lagu")
+    print("5. Next Lagu")
+    print("6. Previous Lagu")
+    print("7. Pause Lagu")
+    print("8. Resume Lagu")
     print("0. Keluar")
 
     pilihan = input("Pilih menu: ")
-
     if pilihan == "1":
 
-        while True:
-            try:
-                id_song = int(input("ID Lagu: "))
-                break
-            except ValueError:
-                print("ID harus berupa angka!")
+        id_song = input("ID Lagu: ").strip()
+
+        if id_song == "":
+            print("ID tidak boleh kosong!")
+            continue
 
         title = input("Judul: ")
         artist = input("Artis: ")
+        duration = input("Durasi (contoh 03.30): ")
+        file_path = input("Path file lagu: ")
 
-        while True:
-            duration = input("Durasi (contoh: 03.30 menit): ")
-
-            if "." in duration:
-                try:
-                    menit, detik = duration.split(".")
-                    int(menit)
-                    int(detik)
-                    break
-                except:
-                    print("Format salah! Gunakan contoh 03.30")
-            else:
-                print("Gunakan format menit.detik (03.30)")
-
-        playlist.add_song(id_song, title, artist, duration)
+        playlist.add_song(id_song, title, artist, duration, file_path)
 
     elif pilihan == "2":
         playlist.show_playlist()
 
     elif pilihan == "3":
-
-        while True:
-            try:
-                id_song = int(input("Masukkan ID lagu yang ingin diedit: "))
-                break
-            except ValueError:
-                print("ID harus angka!")
-
-        playlist.edit_song(id_song)
+        try:
+            id_song = int(input("ID lagu yang dihapus: "))
+            playlist.delete_song(id_song)
+        except:
+            print("ID harus angka!")
 
     elif pilihan == "4":
+        playlist.play_song()
 
-        while True:
-            try:
-                id_song = int(input("Masukkan ID lagu yang ingin dihapus: "))
-                break
-            except ValueError:
-                print("ID harus angka!")
+    elif pilihan == "5":
+        playlist.next_song()
 
-        playlist.delete_song(id_song)
+    elif pilihan == "6":
+        playlist.previous_song()
+        
+    elif pilihan == "7":
+        playlist.pause_song()
+
+    elif pilihan == "8":
+        playlist.resume_song()
 
     elif pilihan == "0":
         print("Program selesai.")

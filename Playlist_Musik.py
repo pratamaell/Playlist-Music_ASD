@@ -5,6 +5,7 @@ from data_handler import save_to_csv, load_from_csv  # Anggota 3: Import untuk f
 from history_stack import HistoryStack  # Anggota 3: Import untuk stack riwayat lagu
 from search_sort import search_title, search_artist, sort_title_asc, sort_duration_asc  # Anggota 3: Import untuk searching dan sorting
 import random
+from mutagen.mp3 import MP3  # Import untuk membaca metadata MP3
 
 
 
@@ -38,7 +39,9 @@ class Playlist:
     # TAMBAH LAGU
     # ========================
     def add_song(self, id_song, title, artist, duration, file_path):
-
+        # Pastikan ID adalah string untuk konsistensi
+        id_song = str(id_song)
+        
         if title.strip() == "" or artist.strip() == "":
             print("Judul dan artis tidak boleh kosong!")
             return
@@ -169,7 +172,9 @@ class Playlist:
     # DELETE
     # ========================
     def delete_song(self, id_song):
-
+        # Pastikan ID adalah string untuk konsistensi
+        id_song = str(id_song)
+        
         current = self.head
 
         while current:
@@ -245,41 +250,92 @@ class Playlist:
             print("Tidak ada lagu aktif.")  # Cetak jika tidak ada lagu
 
     def save_playlist(self, filename='playlist.json'):
-        data = []  # Inisialisasi list untuk data playlist
-        curr = self.head  # Mulai dari head
-        while curr:  # Loop melalui semua node
-            data.append({  # Tambahkan dict lagu ke list
-                'id': curr.id,
-                'title': curr.title,
-                'artist': curr.artist,
-                'duration': curr.duration,
-                'file_path': curr.file_path
-            })
-            curr = curr.next  # Pindah ke node berikutnya
-        with open(filename, 'w') as f:  # Buka file untuk menulis
-            json.dump(data, f, indent=2)  # Dump data ke JSON dengan indent
-        print("Playlist disimpan!")  # Cetak pesan sukses
+        try:
+            data = []  # Inisialisasi list untuk data playlist
+            curr = self.head  # Mulai dari head
+            while curr:  # Loop melalui semua node
+                data.append({  # Tambahkan dict lagu ke list
+                    'id': curr.id,
+                    'title': curr.title,
+                    'artist': curr.artist,
+                    'duration': curr.duration,
+                    'file_path': curr.file_path
+                })
+                curr = curr.next  # Pindah ke node berikutnya
+            with open(filename, 'w', encoding='utf-8') as f:  # Buka file untuk menulis
+                json.dump(data, f, indent=2, ensure_ascii=False)  # Dump data ke JSON dengan indent
+            print(f"✅ Playlist disimpan ke {filename}")  # Cetak pesan sukses
+        except Exception as e:
+            print(f" Error menyimpan playlist: {e}")
 
     def load_playlist(self, filename='playlist.json'):
-        if os.path.exists(filename):  # Periksa file ada
-            with open(filename, 'r') as f:  # Buka file untuk membaca
+        try:
+            if not os.path.exists(filename):  # Periksa file ada
+                print(f"📄 File {filename} tidak ditemukan.")
+                return
+            
+            with open(filename, 'r', encoding='utf-8') as f:  # Buka file untuk membaca
                 data = json.load(f)  # Load data dari JSON
+            
+            if not isinstance(data, list):
+                print("Format JSON tidak valid!")
+                return
+            
             self.head = None  # Reset head
             self.tail = None  # Reset tail
             self.current = None  # Reset current
+            
             for song_data in data:  # Loop melalui data
                 self.add_song(song_data['id'], song_data['title'], song_data['artist'], song_data['duration'], song_data['file_path'])  # Tambah lagu
-            print("Playlist dimuat!") 
-        else:
-            print("File tidak ditemukan.") 
+            print(f"✅ Playlist dimuat dari {filename}") 
+        except json.JSONDecodeError:
+            print("Error: File JSON corrupted atau format tidak valid!")
+        except Exception as e:
+            print(f"Error membaca playlist: {e}")
     def load_music_folder(self):
         music_path = os.path.abspath(self.music_dir)  # Dapatkan path absolut folder Music
+        
+        # Periksa apakah folder Music ada
+        if not os.path.exists(music_path):
+            print(f"Folder '{self.music_dir}' tidak ditemukan. Buat folder atau ubah path.")
+            return
+        
+        if not os.path.isdir(music_path):
+            print(f"'{self.music_dir}' bukan folder!")
+            return
+        
         id_counter = 1  # Counter untuk ID lagu
         for file in os.listdir(music_path):  # Loop melalui file di folder
             if file.lower().endswith('.mp3'):  # Jika file adalah MP3
                 full_path = os.path.join(music_path, file)  # Buat path lengkap
-                title = os.path.splitext(file)[0]  # Ambil nama file tanpa ekstensi sebagai judul
-                self.add_song(str(id_counter), title, 'Unknown', 'Unknown', full_path)  # Tambah lagu dengan ID auto
+                title = os.path.splitext(file)[0]  # Ambil nama file tanpa ekstensi sebagai judul default
+                artist = 'Unknown'  # Default artis
+                duration = 'Unknown'  # Default durasi
+                
+                # Coba baca metadata dari MP3
+                try:
+                    audio = MP3(full_path)
+                    
+                    # Ambil informasi judul dari metadata jika ada
+                    if audio.get('TIT2'):
+                        title = str(audio['TIT2'])
+                    
+                    # Ambil informasi artis dari metadata
+                    if audio.get('TPE1'):
+                        artist = str(audio['TPE1'])
+                    
+                    # Ambil durasi lagu dan konversi ke format MM.SS
+                    if audio.info.length:
+                        total_seconds = int(audio.info.length)
+                        minutes = total_seconds // 60
+                        seconds = total_seconds % 60
+                        duration = f"{minutes:02d}.{seconds:02d}"
+                
+                except Exception as e:
+                    # Jika gagal membaca metadata, gunakan default
+                    print(f"Tidak bisa membaca metadata {file}: {e}")
+                
+                self.add_song(str(id_counter), title, artist, duration, full_path)  # Tambah lagu
                 id_counter += 1  # Tambah counter
         print("Lagu dari folder Music dimuat otomatis!")  
 
@@ -318,10 +374,10 @@ def menu_playlist():
         
         elif pilihan == "3":
             id_song = input("ID lagu yang dihapus: ").strip()
-            if not id_song.isdigit():
-                print("ID harus angka!")
+            if id_song == "":
+                print("ID tidak boleh kosong!")
                 continue
-            playlist.delete_song(int(id_song))
+            playlist.delete_song(id_song)
         
         elif pilihan == "4":
             save_to_csv(playlist)  # Anggota 3: Simpan data playlist ke file CSV untuk persistensi
@@ -442,6 +498,18 @@ def menu_pengaturan():
         else:
             print("Menu tidak valid!")
 
+# ========================
+# SAVE DATA OTOMATIS
+# ========================
+def save_data_otomatis():
+    """Simpan data ke CSV dan JSON sebelum keluar program."""
+    try:
+        save_to_csv(playlist)
+        playlist.save_playlist()
+        print("Semua data berhasil disimpan!")
+    except Exception as e:
+        print(f"Error saat menyimpan: {e}")
+
 while True:
     print("\n========== MENU UTAMA ==========")
     print("1. Menu Playlist (CRUD)")
@@ -457,6 +525,7 @@ while True:
     elif pilihan == "3":
         menu_pengaturan()
     elif pilihan == "0":
+        save_data_otomatis()  # Simpan data sebelum keluar
         print("Program selesai.")
         break
     else:

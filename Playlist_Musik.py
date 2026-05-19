@@ -1,6 +1,5 @@
 import pygame
 import os
-import json  # Import untuk handling JSON di save/load playlist
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 from data_handler import save_to_csv, load_from_csv  # Anggota 3: Import untuk file handling CSV
@@ -208,14 +207,14 @@ class Playlist:
     def pause_song(self):
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.pause()
-            print("⏸ Lagu di-pause")
+            print("Lagu di-pause")
         else:
             print("Tidak ada lagu yang sedang diputar.")
 
 
     def resume_song(self):
         pygame.mixer.music.unpause()
-        print("▶️ Lagu dilanjutkan")
+        print("Lagu dilanjutkan")
 
     """
     ANGOTA 3: Pengaturan - Atur volume, toggle shuffle, set loop mode, dan tampilkan status saat ini
@@ -224,58 +223,30 @@ class Playlist:
         vol = max(0, min(100, vol))  # Batasi volume antara 0-100
         pygame.mixer.music.set_volume(vol / 100.0)  # Set volume mixer pygame (0.0-1.0)
         self.volume = vol  # Simpan volume ke atribut
-        print(f"🔊 Volume: {vol}%")  # Cetak status volume
+        print(f"Volume: {vol}%")  # Cetak status volume
 
     def stop_song(self):
         pygame.mixer.music.stop()  # Hentikan pemutaran musik
-        print("⏹ Lagu dihentikan")  # Cetak pesan stop
+        print("Lagu dihentikan")  # Cetak pesan stop
 
     def toggle_shuffle(self):
         self.shuffle = not self.shuffle  # Toggle nilai shuffle (True/False)
-        print(f"🎲 Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
+        print(f"Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
 
     def set_loop_mode(self, mode):
         if mode in ['semua', 'satu', 'off']:  # Periksa mode valid
             self.loop_mode = mode  # Set mode loop
-            print(f"🔁 Loop: {mode}")  # Cetak status loop
+            print(f"Loop: {mode}")  # Cetak status loop
         else:
             print("Mode tidak valid!")  # Cetak error jika invalid
 
     def show_status(self):
         if self.current:  # Jika ada lagu aktif
-            print(f"🎵 Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
-            print(f"🔊 Vol: {self.volume}% | 🎲 Shuffle: {'ON' if self.shuffle else 'OFF'} | 🔁 Loop: {self.loop_mode}")  # Cetak status
+            print(f"Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
+            print(f"Vol: {self.volume}% |  Shuffle: {'ON' if self.shuffle else 'OFF'} |  Loop: {self.loop_mode}")  # Cetak status
         else:
             print("Tidak ada lagu aktif.")  # Cetak jika tidak ada lagu
 
-    def save_playlist(self, filename='playlist.json'):
-        data = []  # Inisialisasi list untuk data playlist
-        curr = self.head  # Mulai dari head
-        while curr:  # Loop melalui semua node
-            data.append({  # Tambahkan dict lagu ke list
-                'id': curr.id,
-                'title': curr.title,
-                'artist': curr.artist,
-                'duration': curr.duration,
-                'file_path': curr.file_path
-            })
-            curr = curr.next  # Pindah ke node berikutnya
-        with open(filename, 'w') as f:  # Buka file untuk menulis
-            json.dump(data, f, indent=2)  # Dump data ke JSON dengan indent
-        print("Playlist disimpan!")  # Cetak pesan sukses
-
-    def load_playlist(self, filename='playlist.json'):
-        if os.path.exists(filename):  # Periksa file ada
-            with open(filename, 'r') as f:  # Buka file untuk membaca
-                data = json.load(f)  # Load data dari JSON
-            self.head = None  # Reset head
-            self.tail = None  # Reset tail
-            self.current = None  # Reset current
-            for song_data in data:  # Loop melalui data
-                self.add_song(song_data['id'], song_data['title'], song_data['artist'], song_data['duration'], song_data['file_path'])  # Tambah lagu
-            print("Playlist dimuat!") 
-        else:
-            print("File tidak ditemukan.") 
     def load_music_folder(self):
 
         music_path = os.path.abspath(self.music_dir)
@@ -343,7 +314,7 @@ class Playlist:
 playlist = Playlist()
 playlist.load_music_folder()
 
-print("🚀 Playlist Musik siap! Gunakan menu untuk navigasi.")
+print(" Playlist Musik siap! Gunakan menu untuk navigasi.")
 
 def menu_playlist():
     while True:

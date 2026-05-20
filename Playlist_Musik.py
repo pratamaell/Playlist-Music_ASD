@@ -1,7 +1,6 @@
-    import pygame
+import pygame
 import os
-from mutagen.mp3 import MP3
-from mutagen.easyid3 import EasyID3
+import json  # Import untuk handling JSON di save/load playlist
 from data_handler import save_to_csv, load_from_csv  # Anggota 3: Import untuk file handling CSV
 from history_stack import HistoryStack  # Anggota 3: Import untuk stack riwayat lagu
 from search_sort import search_title, search_artist, sort_title_asc, sort_duration_asc  # Anggota 3: Import untuk searching dan sorting
@@ -116,6 +115,7 @@ class Playlist:
             return
 
         if self.shuffle:
+            import random
             all_nodes = []
             curr = self.head
             while curr:
@@ -145,6 +145,7 @@ class Playlist:
             return
 
         if self.shuffle:
+            import random
             all_nodes = []
             curr = self.head
             while curr:
@@ -168,38 +169,56 @@ class Playlist:
     # DELETE
     # ========================
     def delete_song(self, id_song):
-            current = self.head
-            # Konversi input ke string agar cocok dengan tipe data saat penyimpanan
-            id_target = str(id_song)
 
-            while current:
-                # Bandingkan id dalam bentuk string
-                if str(current.id) == id_target:
-                    if current == self.head:
-                        self.head = current.next
-                        if self.head:
-                            self.head.prev = None
-                        else:
-                            self.tail = None
-                    elif current == self.tail:
-                        self.tail = current.prev
-                        if self.tail:
-                            self.tail.next = None
+        current = self.head
+
+        while current:
+
+            if current.id == id_song:
+
+                if current == self.head:
+                    self.head = current.next
+                    if self.head:
+                        self.head.prev = None
                     else:
-                        current.prev.next = current.next
-                        current.next.prev = current.prev
+                        self.tail = None
 
-                    # Reset current jika lagu yang sedang diputar dihapus
-                    if self.current == current:
-                        self.current = None
-                        pygame.mixer.music.stop()
+                elif current == self.tail:
+                    self.tail = current.prev
+                    self.tail.next = None
 
-                    print(f"Lagu dengan ID {id_song} berhasil dihapus!")
-                    return
+                else:
+                    current.prev.next = current.next
+                    current.next.prev = current.prev
 
-                current = current.next
+                print("Lagu berhasil dihapus!")
+                return
 
-            print(f"ID {id_song} tidak ditemukan!")
+            current = current.next
+
+        print("ID tidak ditemukan!")
+
+    # ========================
+    # EDIT LAGU
+    # ========================
+    def edit_song(self, id_song, new_title=None, new_artist=None, new_duration=None, new_file_path=None):
+        current = self.head
+    
+        while current:
+            if current.id == id_song:
+                if new_title and new_title.strip() != "":
+                    current.title = new_title.strip()
+                if new_artist and new_artist.strip() != "":
+                    current.artist = new_artist.strip()
+                if new_duration and new_duration.strip() !="":
+                    current.duration = new_duration.strip()
+                if new_file_path and new_file_path.strip() != "":
+                    current.file_path = new_file_path.strip()
+                print("Lagu berhasil diedit!")
+                return
+            current = current.next
+    
+        print("ID tidak ditemukan!")
         
     # ========================
     # PAUSE / RESUME
@@ -207,14 +226,14 @@ class Playlist:
     def pause_song(self):
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.pause()
-            print("Lagu di-pause")
+            print("⏸ Lagu di-pause")
         else:
             print("Tidak ada lagu yang sedang diputar.")
 
 
     def resume_song(self):
         pygame.mixer.music.unpause()
-        print("Lagu dilanjutkan")
+        print("▶️ Lagu dilanjutkan")
 
     """
     ANGOTA 3: Pengaturan - Atur volume, toggle shuffle, set loop mode, dan tampilkan status saat ini
@@ -223,98 +242,76 @@ class Playlist:
         vol = max(0, min(100, vol))  # Batasi volume antara 0-100
         pygame.mixer.music.set_volume(vol / 100.0)  # Set volume mixer pygame (0.0-1.0)
         self.volume = vol  # Simpan volume ke atribut
-        print(f"Volume: {vol}%")  # Cetak status volume
+        print(f"🔊 Volume: {vol}%")  # Cetak status volume
 
     def stop_song(self):
         pygame.mixer.music.stop()  # Hentikan pemutaran musik
-        print("Lagu dihentikan")  # Cetak pesan stop
+        print("⏹ Lagu dihentikan")  # Cetak pesan stop
 
     def toggle_shuffle(self):
         self.shuffle = not self.shuffle  # Toggle nilai shuffle (True/False)
-        print(f"Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
+        print(f"🎲 Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
 
     def set_loop_mode(self, mode):
         if mode in ['semua', 'satu', 'off']:  # Periksa mode valid
             self.loop_mode = mode  # Set mode loop
-            print(f"Loop: {mode}")  # Cetak status loop
+            print(f"🔁 Loop: {mode}")  # Cetak status loop
         else:
             print("Mode tidak valid!")  # Cetak error jika invalid
 
     def show_status(self):
         if self.current:  # Jika ada lagu aktif
-            print(f"Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
-            print(f"Vol: {self.volume}% |  Shuffle: {'ON' if self.shuffle else 'OFF'} |  Loop: {self.loop_mode}")  # Cetak status
+            print(f"🎵 Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
+            print(f"🔊 Vol: {self.volume}% | 🎲 Shuffle: {'ON' if self.shuffle else 'OFF'} | 🔁 Loop: {self.loop_mode}")  # Cetak status
         else:
             print("Tidak ada lagu aktif.")  # Cetak jika tidak ada lagu
 
+    def save_playlist(self, filename='playlist.json'):
+        data = []  # Inisialisasi list untuk data playlist
+        curr = self.head  # Mulai dari head
+        while curr:  # Loop melalui semua node
+            data.append({  # Tambahkan dict lagu ke list
+                'id': curr.id,
+                'title': curr.title,
+                'artist': curr.artist,
+                'duration': curr.duration,
+                'file_path': curr.file_path
+            })
+            curr = curr.next  # Pindah ke node berikutnya
+        with open(filename, 'w') as f:  # Buka file untuk menulis
+            json.dump(data, f, indent=2)  # Dump data ke JSON dengan indent
+        print("Playlist disimpan!")  # Cetak pesan sukses
+
+    def load_playlist(self, filename='playlist.json'):
+        if os.path.exists(filename):  # Periksa file ada
+            with open(filename, 'r') as f:  # Buka file untuk membaca
+                data = json.load(f)  # Load data dari JSON
+            self.head = None  # Reset head
+            self.tail = None  # Reset tail
+            self.current = None  # Reset current
+            for song_data in data:  # Loop melalui data
+                self.add_song(song_data['id'], song_data['title'], song_data['artist'], song_data['duration'], song_data['file_path'])  # Tambah lagu
+            print("Playlist dimuat!") 
+        else:
+            print("File tidak ditemukan.") 
     def load_music_folder(self):
+        music_path = os.path.abspath(self.music_dir)  # Dapatkan path absolut folder Music
+        id_counter = 1  # Counter untuk ID lagu
+        for file in os.listdir(music_path):  # Loop melalui file di folder
+            if file.lower().endswith('.mp3'):  # Jika file adalah MP3
+                full_path = os.path.join(music_path, file)  # Buat path lengkap
+                title = os.path.splitext(file)[0]  # Ambil nama file tanpa ekstensi sebagai judul
+                self.add_song(str(id_counter), title, 'Unknown', 'Unknown', full_path)  # Tambah lagu dengan ID auto
+                id_counter += 1  # Tambah counter
+        print("Lagu dari folder Music dimuat otomatis!")  
 
-        music_path = os.path.abspath(self.music_dir)
-        id_counter = 1
-
-        for file in os.listdir(music_path):
-
-            if file.lower().endswith('.mp3'):
-
-                full_path = os.path.join(music_path, file)
-
-                # default
-                title = os.path.splitext(file)[0]
-                artist = "Unknown"
-                duration = "Unknown"
-
-                try:
-                    audio = MP3(full_path, ID3=EasyID3)
-
-                    # ambil title
-                    if 'title' in audio:
-                        title = audio['title'][0]
-
-                    # ambil artist
-                    if 'artist' in audio:
-                        artist = audio['artist'][0]
-
-                    # ambil durasi
-                    audio_info = MP3(full_path)
-                    total_seconds = int(audio_info.info.length)
-
-                    minutes = total_seconds // 60
-                    seconds = total_seconds % 60
-
-                    duration = f"{minutes}:{seconds:02d}"
-
-                except:
-                    pass
-
-                # =========================
-                # FALLBACK DARI NAMA FILE
-                # =========================
-                if artist == "Unknown":
-
-                    filename = os.path.splitext(file)[0]
-
-                    if " - " in filename:
-                        artist, title = filename.split(" - ", 1)
-
-                self.add_song(
-                    str(id_counter),
-                    title,
-                    artist,
-                    duration,
-                    full_path
-                )
-
-                id_counter += 1
-
-        print("Lagu dari folder Music dimuat!")
-    
 # ========================
 # PROGRAM UTAMA
 # ========================
 playlist = Playlist()
 playlist.load_music_folder()
 
-print(" Playlist Musik siap! Gunakan menu untuk navigasi.")
+print("🚀 Playlist Musik siap! Gunakan menu untuk navigasi.")
 
 def menu_playlist():
     while True:
@@ -322,65 +319,22 @@ def menu_playlist():
         print("1. Tambah Lagu")
         print("2. Lihat Playlist")
         print("3. Hapus Lagu")
-        print("4. Simpan ke CSV")
+        print("4. Edit Lagu")        
+        print("5. Simpan ke CSV")
+        print("6. Muat dari CSV")
         print("0. Kembali ke Menu Utama")
         
         pilihan = input("Pilih menu: ").strip()
         if pilihan == "1":
-
-            file_path = input("Path file MP3: ").strip()
-
-            if not os.path.exists(file_path):
-                print("File tidak ditemukan!")
+            id_song = input("ID Lagu: ").strip()
+            if id_song == "":
+                print("ID tidak boleh kosong!")
                 continue
-
-            file_name = os.path.basename(file_path)
-            filename = os.path.splitext(file_name)[0]
-
-            title = filename
-            artist = "Unknown"
-            duration = "Unknown"
-
-            try:
-                audio = MP3(file_path, ID3=EasyID3)
-
-                # title
-                if 'title' in audio:
-                    title = audio['title'][0]
-
-                # artist
-                if 'artist' in audio:
-                    artist = audio['artist'][0]
-
-                # duration
-                audio_info = MP3(file_path)
-
-                total_seconds = int(audio_info.info.length)
-
-                minutes = total_seconds // 60
-                seconds = total_seconds % 60
-
-                duration = f"{minutes}:{seconds:02d}"
-
-            except:
-                pass
-
-            # fallback nama file
-            if artist == "Unknown":
-
-                if " - " in filename:
-                    artist, title = filename.split(" - ", 1)
-
-            # auto ID random
-            id_song = str(random.randint(1000, 9999))
-
-            playlist.add_song(
-                id_song,
-                title,
-                artist,
-                duration,
-                file_path
-            )
+            title = input("Judul: ").strip()
+            artist = input("Artis: ").strip()
+            duration = input("Durasi (contoh 03.30): ").strip()
+            file_path = input("Path file lagu: ").strip()
+            playlist.add_song(id_song, title, artist, duration, file_path)
         
         elif pilihan == "2":
             playlist.show_playlist()
@@ -390,10 +344,28 @@ def menu_playlist():
             if not id_song.isdigit():
                 print("ID harus angka!")
                 continue
-            playlist.delete_song(id_song)
+            playlist.delete_song(int(id_song))
+
+        elif pilihan == "4":                          # ← tambah blok ini
+            id_song = input("ID lagu yang diedit: ").strip()
+            print("(Kosongkan jika tidak ingin mengubah field tersebut)")
+            new_title = input("Judul baru: ").strip()
+            new_artist = input("Artis baru: ").strip()
+            new_duration = input("Durasi baru: ").strip()
+            new_file_path = input("Path file baru: ").strip()
+            playlist.edit_song(
+                id_song,
+                new_title or None,
+                new_artist or None,
+                new_duration or None,
+                new_file_path or None
+            )
         
-        elif pilihan == "4":
+        elif pilihan == "5":
             save_to_csv(playlist)  # Anggota 3: Simpan data playlist ke file CSV untuk persistensi
+        
+        elif pilihan == "6":
+            load_from_csv(playlist)  # Anggota 3: Muat data playlist dari file CSV saat startup
         
         elif pilihan == "0":
             break

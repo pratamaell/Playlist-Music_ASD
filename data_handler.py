@@ -24,39 +24,3 @@ def save_to_csv(playlist):
     except Exception as e:
         print(f"Error menyimpan CSV: {e}")
 
-def load_from_csv(playlist):
-    """
-    Muat playlist dari file CSV saat startup aplikasi.
-    """
-    if not os.path.exists(CSV_FILE):  # Periksa apakah file CSV ada
-        print(f"{CSV_FILE} tidak ditemukan.")  # Cetak pesan jika file tidak ada
-        return  # Keluar dari fungsi
-    
-    try:
-        # Tanyakan konfirmasi kepada user sebelum load (agar tidak menghapus data yang sudah ada)
-        confirm = input(f"Ini akan mengganti playlist yang ada sekarang. Lanjutkan? (y/n): ").strip().lower()
-        if confirm != 'y':
-            print("Dibatalkan.")
-            return
-        
-        playlist.head = None  # Reset head playlist
-        playlist.tail = None  # Reset tail playlist
-        playlist.current = None  # Reset current playlist
-        
-        with open(CSV_FILE, 'r', encoding='utf-8') as f:  # Buka file CSV untuk membaca
-            reader = csv.DictReader(f)  # Buat reader untuk membaca CSV sebagai dictionary
-            if reader is None or reader.fieldnames is None:
-                print("Format CSV tidak valid!")
-                return
-            
-            for row in reader:  # Loop melalui setiap baris di CSV
-                # Validasi data sebelum menambahkan
-                if all(key in row for key in ['ID', 'Title', 'Artist', 'Duration', 'FilePath']):
-                    playlist.add_song(row['ID'], row['Title'], row['Artist'], row['Duration'], row['FilePath'])  # Tambahkan lagu ke playlist
-                else:
-                    print("Baris CSV tidak memiliki semua kolom yang diperlukan.")
-        
-        print(f"Data dimuat dari {CSV_FILE}")  # Cetak pesan konfirmasi pemuatan
-    except Exception as e:
-        print(f"Error membaca CSV: {e}")
-

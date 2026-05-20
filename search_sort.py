@@ -67,7 +67,7 @@ def sort_title_asc(playlist):
             else:
                 curr = curr.next  # Jika tidak perlu swap, maju ke node berikutnya
     
-    print("✅ Diurutkan judul A-Z")
+    print("Diurutkan judul A-Z")
     playlist.show_playlist()  # Tampilkan hasil sorting 
 
 def sort_duration_asc(playlist):
@@ -127,6 +127,6 @@ def sort_duration_asc(playlist):
             else:
                 curr = curr.next  # Jika tidak perlu swap, maju ke node berikutnya
     
-    print("✅ Diurutkan durasi pendek-panjang")
+    print("Diurutkan durasi pendek-panjang")
     playlist.show_playlist()  # Tampilkan hasil sorting  
 

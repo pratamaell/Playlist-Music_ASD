@@ -2,7 +2,7 @@ import pygame
 import os
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
-from data_handler import save_to_csv, load_from_csv  # Anggota 3: Import untuk file handling CSV
+from data_handler import save_to_csv  # Anggota 3: Import untuk file handling CSV
 from history_stack import HistoryStack  # Anggota 3: Import untuk stack riwayat lagu
 from search_sort import search_title, search_artist, sort_title_asc, sort_duration_asc  # Anggota 3: Import untuk searching dan sorting
 import random

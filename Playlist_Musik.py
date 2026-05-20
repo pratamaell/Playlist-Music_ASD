@@ -1,11 +1,14 @@
 import pygame
 import os
+import json  # Import untuk handling JSON di save/load playlist
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 from data_handler import save_to_csv  # Anggota 3: Import untuk file handling CSV
 from history_stack import HistoryStack  # Anggota 3: Import untuk stack riwayat lagu
 from search_sort import search_title, search_artist, sort_title_asc, sort_duration_asc  # Anggota 3: Import untuk searching dan sorting
 import random
+from tkinter import filedialog
+import tkinter as tk
 
 
 
@@ -201,20 +204,43 @@ class Playlist:
 
             print(f"ID {id_song} tidak ditemukan!")
         
+        
+    # ========================
+    # EDIT LAGU
+    # ========================
+    def edit_song(self, id_song, new_title=None, new_artist=None, new_duration=None, new_file_path=None):
+        current = self.head
+    
+        while current:
+            if current.id == id_song:
+                if new_title and new_title.strip() != "":
+                    current.title = new_title.strip()
+                if new_artist and new_artist.strip() != "":
+                    current.artist = new_artist.strip()
+                if new_duration and new_duration.strip() !="":
+                    current.duration = new_duration.strip()
+                if new_file_path and new_file_path.strip() != "":
+                    current.file_path = new_file_path.strip()
+                print("Lagu berhasil diedit!")
+                return
+            current = current.next
+    
+        print("ID tidak ditemukan!")
+        
     # ========================
     # PAUSE / RESUME
     # ========================
     def pause_song(self):
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.pause()
-            print("Lagu di-pause")
+            print("⏸ Lagu di-pause")
         else:
             print("Tidak ada lagu yang sedang diputar.")
 
 
     def resume_song(self):
         pygame.mixer.music.unpause()
-        print("Lagu dilanjutkan")
+        print("▶️ Lagu dilanjutkan")
 
     """
     ANGOTA 3: Pengaturan - Atur volume, toggle shuffle, set loop mode, dan tampilkan status saat ini
@@ -223,30 +249,58 @@ class Playlist:
         vol = max(0, min(100, vol))  # Batasi volume antara 0-100
         pygame.mixer.music.set_volume(vol / 100.0)  # Set volume mixer pygame (0.0-1.0)
         self.volume = vol  # Simpan volume ke atribut
-        print(f"Volume: {vol}%")  # Cetak status volume
+        print(f"🔊 Volume: {vol}%")  # Cetak status volume
 
     def stop_song(self):
         pygame.mixer.music.stop()  # Hentikan pemutaran musik
-        print("Lagu dihentikan")  # Cetak pesan stop
+        print("⏹ Lagu dihentikan")  # Cetak pesan stop
 
     def toggle_shuffle(self):
         self.shuffle = not self.shuffle  # Toggle nilai shuffle (True/False)
-        print(f"Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
+        print(f"🎲 Shuffle: {'ON' if self.shuffle else 'OFF'}")  # Cetak status shuffle
 
     def set_loop_mode(self, mode):
         if mode in ['semua', 'satu', 'off']:  # Periksa mode valid
             self.loop_mode = mode  # Set mode loop
-            print(f"Loop: {mode}")  # Cetak status loop
+            print(f"🔁 Loop: {mode}")  # Cetak status loop
         else:
             print("Mode tidak valid!")  # Cetak error jika invalid
 
     def show_status(self):
         if self.current:  # Jika ada lagu aktif
-            print(f"Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
-            print(f"Vol: {self.volume}% |  Shuffle: {'ON' if self.shuffle else 'OFF'} |  Loop: {self.loop_mode}")  # Cetak status
+            print(f"🎵 Current: {self.current.title} - {self.current.artist}")  # Cetak lagu saat ini
+            print(f"🔊 Vol: {self.volume}% | 🎲 Shuffle: {'ON' if self.shuffle else 'OFF'} | 🔁 Loop: {self.loop_mode}")  # Cetak status
         else:
             print("Tidak ada lagu aktif.")  # Cetak jika tidak ada lagu
 
+    def save_playlist(self, filename='playlist.json'):
+        data = []  # Inisialisasi list untuk data playlist
+        curr = self.head  # Mulai dari head
+        while curr:  # Loop melalui semua node
+            data.append({  # Tambahkan dict lagu ke list
+                'id': curr.id,
+                'title': curr.title,
+                'artist': curr.artist,
+                'duration': curr.duration,
+                'file_path': curr.file_path
+            })
+            curr = curr.next  # Pindah ke node berikutnya
+        with open(filename, 'w') as f:  # Buka file untuk menulis
+            json.dump(data, f, indent=2)  # Dump data ke JSON dengan indent
+        print("Playlist disimpan!")  # Cetak pesan sukses
+
+    def load_playlist(self, filename='playlist.json'):
+        if os.path.exists(filename):  # Periksa file ada
+            with open(filename, 'r') as f:  # Buka file untuk membaca
+                data = json.load(f)  # Load data dari JSON
+            self.head = None  # Reset head
+            self.tail = None  # Reset tail
+            self.current = None  # Reset current
+            for song_data in data:  # Loop melalui data
+                self.add_song(song_data['id'], song_data['title'], song_data['artist'], song_data['duration'], song_data['file_path'])  # Tambah lagu
+            print("Playlist dimuat!") 
+        else:
+            print("File tidak ditemukan.") 
     def load_music_folder(self):
 
         music_path = os.path.abspath(self.music_dir)
@@ -307,14 +361,35 @@ class Playlist:
                 id_counter += 1
 
         print("Lagu dari folder Music dimuat!")
+
+# ========================
+# HELPER FUNCTION - FILE PICKER
+# ========================
+def pick_music_file():
+    """
+    Buka file picker dialog untuk memilih file MP3 dari mana saja di sistem.
+    Return: file path jika user memilih, atau None jika cancel.
+    """
+    root = tk.Tk()
+    root.withdraw()  # Sembunyikan window tkinter
+    root.attributes('-topmost', True)  # Buat window selalu di atas
     
+    file_path = filedialog.askopenfilename(
+        title="Pilih file MP3",
+        filetypes=[("MP3 Files", "*.mp3"), ("Semua File", "*.*")],
+        initialdir=os.path.expanduser("~")  # Buka dari home directory
+    )
+    
+    root.destroy()  # Tutup window tkinter
+    return file_path if file_path else None
+
 # ========================
 # PROGRAM UTAMA
 # ========================
 playlist = Playlist()
 playlist.load_music_folder()
 
-print(" Playlist Musik siap! Gunakan menu untuk navigasi.")
+print("🚀 Playlist Musik siap! Gunakan menu untuk navigasi.")
 
 def menu_playlist():
     while True:
@@ -322,14 +397,20 @@ def menu_playlist():
         print("1. Tambah Lagu")
         print("2. Lihat Playlist")
         print("3. Hapus Lagu")
-        print("4. Simpan ke CSV")
+        print("4. Edit Lagu")         
+        print("5. Simpan ke CSV")    
         print("0. Kembali ke Menu Utama")
         
         pilihan = input("Pilih menu: ").strip()
+        
         if pilihan == "1":
+            print("\nMembuka file picker...")  
+            file_path = pick_music_file()
 
-            file_path = input("Path file MP3: ").strip()
-
+            if file_path is None:
+                print("Pembatalan pemilihan file.")
+                continue
+            
             if not os.path.exists(file_path):
                 print("File tidak ditemukan!")
                 continue
@@ -367,7 +448,6 @@ def menu_playlist():
 
             # fallback nama file
             if artist == "Unknown":
-
                 if " - " in filename:
                     artist, title = filename.split(" - ", 1)
 
@@ -391,8 +471,22 @@ def menu_playlist():
                 print("ID harus angka!")
                 continue
             playlist.delete_song(id_song)
-        
+            
+        # ========================
+        # BLOK EDIT LAGU DITAMBAHKAN
+        # ========================
         elif pilihan == "4":
+            id_song = input("Masukkan ID lagu yang ingin diedit: ").strip()
+            
+            print("Tips: Kosongkan isian dan langsung tekan Enter jika tidak ingin mengubah data tersebut.")
+            new_title = input("Judul baru: ").strip()
+            new_artist = input("Artis baru: ").strip()
+            new_duration = input("Durasi baru (contoh 03:45): ").strip()
+            new_file_path = input("Path file MP3 baru: ").strip()
+            
+            playlist.edit_song(id_song, new_title, new_artist, new_duration, new_file_path)
+        
+        elif pilihan == "5":
             save_to_csv(playlist)  # Anggota 3: Simpan data playlist ke file CSV untuk persistensi
         
         elif pilihan == "0":
@@ -471,48 +565,10 @@ def menu_lagu():
         else:
             print("Menu tidak valid!")
 
-def menu_pengaturan():
-    while True:
-        print("\n--- MENU PENGATURAN ---")
-        print("1. Set Volume")
-        print("2. Toggle Shuffle")
-        print("3. Set Loop Mode")
-        print("4. Lihat Status")
-        print("5. Reload Folder Music")
-        print("0. Kembali ke Menu Utama")
-        
-        pilihan = input("Pilih menu: ").strip()
-        if pilihan == "1":
-            try:
-                vol = int(input("Volume (0-100): "))
-                playlist.set_volume(vol)
-            except ValueError:
-                print("Volume harus angka!")
-        
-        elif pilihan == "2":
-            playlist.toggle_shuffle()
-        
-        elif pilihan == "3":
-            mode = input("Mode loop (semua/satu/off): ").strip().lower()
-            playlist.set_loop_mode(mode)
-        
-        elif pilihan == "4":
-            playlist.show_status()
-        
-        elif pilihan == "5":
-            playlist.load_music_folder()
-        
-        elif pilihan == "0":
-            break
-        
-        else:
-            print("Menu tidak valid!")
-
 while True:
     print("\n========== MENU UTAMA ==========")
     print("1. Menu Playlist (CRUD)")
     print("2. Menu Lagu")
-    print("3. Menu Pengaturan")
     print("0. Keluar")
     
     pilihan = input("Pilih menu: ").strip()
@@ -520,8 +576,6 @@ while True:
         menu_playlist()
     elif pilihan == "2":
         menu_lagu()
-    elif pilihan == "3":
-        menu_pengaturan()
     elif pilihan == "0":
         print("Program selesai.")
         break

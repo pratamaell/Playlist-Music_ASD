@@ -397,8 +397,7 @@ def menu_playlist():
         print("1. Tambah Lagu")
         print("2. Lihat Playlist")
         print("3. Hapus Lagu")
-        print("4. Edit Lagu")         
-        print("5. Simpan ke CSV")    
+        print("4. Edit Lagu")            
         print("0. Kembali ke Menu Utama")
         
         pilihan = input("Pilih menu: ").strip()
@@ -504,11 +503,6 @@ def menu_lagu():
         print("4. Pause Lagu")
         print("5. Resume Lagu")
         print("6. Stop Lagu")
-        print("7. Lihat Riwayat")
-        print("8. Cari berdasarkan Judul")
-        print("9. Cari berdasarkan Artis")
-        print("10. Urutkan berdasarkan Judul A-Z")
-        print("11. Urutkan berdasarkan Durasi Pendek-Panjang")
         print("0. Kembali ke Menu Utama")
         
         pilihan = input("Pilih menu: ").strip()
@@ -530,12 +524,31 @@ def menu_lagu():
         elif pilihan == "6":
             playlist.stop_song()
         
-        elif pilihan == "7":
-            playlist.history.show_history()  # Anggota 3: Tampilkan riwayat lagu yang telah diputar
+        elif pilihan == "0":
+            break
         
-        elif pilihan == "8":
+        else:
+            print("Menu tidak valid!")
+
+
+def menu_utility():
+    while True:
+        print("\n--- MENU UTILITY ---")
+        print("1. Lihat Riwayat")
+        print("2. Cari berdasarkan Judul")
+        print("3. Cari berdasarkan Artis")
+        print("4. Urutkan berdasarkan Alfabet")
+        print("5. Urutkan berdasarkan Durasi Pendek-Panjang")
+        print("6. Simpan ke CSV")
+        print("0. Kembali ke Menu Utama")
+        
+        pilihan = input("Pilih menu: ").strip()
+        if pilihan == "1":
+            playlist.history.show_history()
+        
+        elif pilihan == "2":
             keyword = input("Kata kunci judul: ").strip()
-            results = search_title(playlist, keyword)  # Anggota 3: Cari lagu berdasarkan judul
+            results = search_title(playlist, keyword)
             if results:
                 print(f"\nHasil pencarian untuk '{keyword}':")
                 for song in results:
@@ -543,9 +556,9 @@ def menu_lagu():
             else:
                 print("Tidak ditemukan.")
         
-        elif pilihan == "9":
+        elif pilihan == "3":
             keyword = input("Kata kunci artis: ").strip()
-            results = search_artist(playlist, keyword)  # Anggota 3: Cari lagu berdasarkan artis
+            results = search_artist(playlist, keyword)
             if results:
                 print(f"\nHasil pencarian untuk '{keyword}':")
                 for song in results:
@@ -553,11 +566,14 @@ def menu_lagu():
             else:
                 print("Tidak ditemukan.")
         
-        elif pilihan == "10":
-            sort_title_asc(playlist)  # Anggota 3: Urutkan playlist berdasarkan judul A-Z
+        elif pilihan == "4":
+            sort_title_asc(playlist)
         
-        elif pilihan == "11":
-            sort_duration_asc(playlist)  # Anggota 3: Urutkan playlist berdasarkan durasi pendek-panjang
+        elif pilihan == "5":
+            sort_duration_asc(playlist)
+        
+        elif pilihan == "6":
+            save_to_csv(playlist)
         
         elif pilihan == "0":
             break
@@ -569,6 +585,7 @@ while True:
     print("\n========== MENU UTAMA ==========")
     print("1. Menu Playlist (CRUD)")
     print("2. Menu Lagu")
+    print("3. Menu Utility")
     print("0. Keluar")
     
     pilihan = input("Pilih menu: ").strip()
@@ -576,6 +593,8 @@ while True:
         menu_playlist()
     elif pilihan == "2":
         menu_lagu()
+    elif pilihan == "3":
+        menu_utility()
     elif pilihan == "0":
         print("Program selesai.")
         break

@@ -38,31 +38,35 @@ class Playlist:
         self.music_dir = 'Music'
 
 
-    # ========================
+# ========================
     # TAMBAH LAGU
     # ========================
     def add_song(self, id_song, title, artist, duration, file_path):
-
+        # Validasi 1: Memastikan input string untuk judul dan artis tidak kosong/hanya spasi
         if title.strip() == "" or artist.strip() == "":
             print("Judul dan artis tidak boleh kosong!")
-            return
+            return # Membatalkan proses penambahan
 
+        # Validasi 2: Cek keunikan ID (traversal dari head untuk memastikan ID belum terpakai)
         current = self.head
         while current:
             if current.id == id_song:
                 print("ID sudah digunakan!")
-                return
+                return # Membatalkan proses jika ditemukan ID duplikat
             current = current.next
 
+        # Membuat instance objek node baru dari class SongNode
         new_song = SongNode(id_song, title, artist, duration, file_path)
 
+        # Kondisi A: Jika playlist masih kosong, node baru otomatis menjadi head sekaligus tail
         if self.head is None:
             self.head = new_song
             self.tail = new_song
+        # Kondisi B: Jika playlist sudah ada isinya, pasang node baru di ujung belakang (tail)
         else:
-            self.tail.next = new_song
-            new_song.prev = self.tail
-            self.tail = new_song
+            self.tail.next = new_song  # Hubungkan next dari tail lama ke node baru
+            new_song.prev = self.tail  # Hubungkan prev dari node baru ke tail lama
+            self.tail = new_song       # Geser pointer tail utama ke node baru yang sekarang berada di ujung
 
         print("Lagu berhasil ditambahkan!")
 
@@ -71,164 +75,212 @@ class Playlist:
     # TAMPILKAN PLAYLIST
     # ========================
     def show_playlist(self):
-
+        # Validasi: Jika head kosong, berarti tidak ada lagu untuk ditampilkan
         if self.head is None:
             print("\nPlaylist kosong.")
             return
 
+        # Proses Traversal: Menelusuri linked list dari head sampai ujung (None)
         current = self.head
         print("\n=== PLAYLIST ===")
         while current:
+            # Mencetak informasi detail dari setiap node lagu yang dilewati
             print(f"{current.id}. {current.title} - {current.artist} ({current.duration})")
-            current = current.next
+            current = current.next # Pindah ke node berikutnya
 
-    # ========================
-    # PLAY
-    # ========================
-    def play_song(self):
-
-        if self.head is None:  # Jika playlist kosong
-            print("Playlist kosong.")  # Cetak pesan error
-            return  # Keluar dari fungsi
-
-        if self.current is None:  # Jika belum ada lagu yang dipilih
-            self.current = self.head  # Set current ke head (lagu pertama)
-
-        try:
-            pygame.mixer.music.load(self.current.file_path)  # Load file lagu ke mixer
-            pygame.mixer.music.play()  # Mulai pemutaran lagu
-
-            # Anggota 3: Tambahkan lagu ke riwayat saat diputar
-            self.history.push(self.current)  # Push lagu saat ini ke stack riwayat
-
-            print("\n🎵 Now Playing:")  # Cetak header
-            print(f"Judul  : {self.current.title}")  # Cetak judul
-            print(f"Artis  : {self.current.artist}")  # Cetak artis
-            print(f"Durasi : {self.current.duration} menit")  # Cetak durasi
-
-        except Exception as e:  # Jika ada error saat load/play
-            print("Gagal memutar lagu:", e)  # Cetak error
-
-    # ========================
-    # NEXT
-    # ========================
-    def next_song(self):
-
-        if self.current is None:
-            print("Belum ada lagu diputar.")
-            return
-
-        if self.shuffle:
-            all_nodes = []
-            curr = self.head
-            while curr:
-                all_nodes.append(curr)
-                curr = curr.next
-            if all_nodes:
-                self.current = random.choice(all_nodes)
-        elif self.current.next:
-            self.current = self.current.next
-        elif self.loop_mode == 'semua':
-            self.current = self.head
-        elif self.loop_mode == 'satu':
-            pass  # stay
-        else:
-            print("Akhir playlist (loop off).")
-            return
-
-        self.play_song()
-
-    # ========================
-    # PREVIOUS
-    # ========================
-    def previous_song(self):
-
-        if self.current is None:
-            print("Belum ada lagu diputar.")
-            return
-
-        if self.shuffle:
-            all_nodes = []
-            curr = self.head
-            while curr:
-                all_nodes.append(curr)
-                curr = curr.next
-            if all_nodes:
-                self.current = random.choice(all_nodes)
-        elif self.current.prev:
-            self.current = self.current.prev
-        elif self.loop_mode == 'semua':
-            self.current = self.tail
-        elif self.loop_mode == 'satu':
-            pass
-        else:
-            print("Awal playlist (loop off).")
-            return
-
-        self.play_song()
 
     # ========================
     # DELETE
     # ========================
     def delete_song(self, id_song):
             current = self.head
-            # Konversi input ke string agar cocok dengan tipe data saat penyimpanan
+            # Konversi input ke string agar cocok dengan tipe data saat penyimpanan (antisipasi input int/str)
             id_target = str(id_song)
 
+            # Pencarian node yang akan dihapus berdasarkan ID
             while current:
                 # Bandingkan id dalam bentuk string
                 if str(current.id) == id_target:
+                    
+                    # KASUS 1: Node yang dihapus adalah HEAD (Lagu pertama)
                     if current == self.head:
-                        self.head = current.next
+                        self.head = current.next # Geser head ke node kedua
                         if self.head:
-                            self.head.prev = None
+                            self.head.prev = None # Putus hubungan prev node baru ke node lama
                         else:
-                            self.tail = None
+                            self.tail = None # Jika setelah digeser head jadi None, berarti list sekarang kosong (tail juga None)
+                            
+                    # KASUS 2: Node yang dihapus adalah TAIL (Lagu terakhir)
                     elif current == self.tail:
-                        self.tail = current.prev
+                        self.tail = current.prev # Mundurkan tail ke node sebelum terakhir
                         if self.tail:
-                            self.tail.next = None
+                            self.tail.next = None # Putus hubungan next dari tail baru
+                            
+                    # KASUS 3: Node yang dihapus berada di TENGAH playlist
                     else:
-                        current.prev.next = current.next
-                        current.next.prev = current.prev
+                        current.prev.next = current.next # Hubungkan next milik node SEBELUMNYA langsung ke node SESUDAHNYA
+                        current.next.prev = current.prev # Hubungkan prev milik node SESUDAHNYA langsung ke node SEBELUMNYA
 
-                    # Reset current jika lagu yang sedang diputar dihapus
+                    # Fitur Safety: Jika lagu yang sedang diputar (current) adalah lagu yang dihapus
                     if self.current == current:
-                        self.current = None
-                        pygame.mixer.music.stop()
+                        self.current = None # Reset pointer lagu aktif menjadi None
+                        pygame.mixer.music.stop() # Hentikan audio yang sedang berjalan agar tidak error
 
                     print(f"Lagu dengan ID {id_song} berhasil dihapus!")
-                    return
+                    return # Keluar dari fungsi setelah berhasil menghapus
 
-                current = current.next
+                current = current.next # Geser ke node berikutnya jika ID belum cocok
 
+            # Pesan ini hanya tercapai jika perulangan 'while' selesai tanpa memicu 'return'
             print(f"ID {id_song} tidak ditemukan!")
-        
-        
+            
+            
     # ========================
     # EDIT LAGU
     # ========================
     def edit_song(self, id_song, new_title=None, new_artist=None, new_duration=None, new_file_path=None):
         current = self.head
     
+        # Pencarian node lagu yang akan diedit berdasarkan ID
         while current:
             if current.id == id_song:
+                # Blok pengecekan parameter optional: Data hanya diperbarui jika argumen diisi dan bukan spasi kosong
                 if new_title and new_title.strip() != "":
                     current.title = new_title.strip()
+                    
                 if new_artist and new_artist.strip() != "":
                     current.artist = new_artist.strip()
+                    
                 if new_duration and new_duration.strip() !="":
                     current.duration = new_duration.strip()
+                    
                 if new_file_path and new_file_path.strip() != "":
                     current.file_path = new_file_path.strip()
+                    
                 print("Lagu berhasil diedit!")
-                return
-            current = current.next
+                return # Keluar fungsi setelah berhasil memperbarui data
+                
+            current = current.next # Lanjut cari ke node berikutnya
     
+        
+# ========================
+    # PLAY
+    # ========================
+    def play_song(self):
+        # Validasi 1: Periksa apakah playlist dalam keadaan kosong
+        if self.head is None:  
+            print("Playlist kosong.")  
+            return  # Menghentikan fungsi agar tidak lanjut ke proses play
+
+        # Validasi 2: Jika pemutar musik baru dibuka atau belum ada lagu aktif yang dipilih
+        if self.current is None:  
+            self.current = self.head  # Set pointer lagu saat ini ke lagu pertama (head)
+
+        # Blok penanganan error untuk mengantisipasi masalah pada file audio (misal: file corrupt atau path salah)
+        try:
+            pygame.mixer.music.load(self.current.file_path)  # Memuat file audio dari path yang tersimpan di node
+            pygame.mixer.music.play()  # Memulai pemutaran audio menggunakan Pygame
+
+            # Anggota 3: Tambahkan lagu ke riwayat saat diputar
+            self.history.push(self.current)  # Menyimpan object node lagu saat ini ke dalam Stack riwayat
+
+            # Menampilkan informasi metadata lagu yang sedang aktif di konsol
+            print("\n🎵 Now Playing:")  
+            print(f"Judul  : {self.current.title}")  
+            print(f"Artis  : {self.current.artist}")  
+            print(f"Durasi : {self.current.duration} menit")  
+
+        # Menangkap segala jenis exception/error yang terjadi di dalam blok try
+        except Exception as e:  
+            print("Gagal memutar lagu:", e)  # Menampilkan pesan error spesifik tanpa menghentikan paksa program
+
+    # ========================
+    # NEXT
+    # ========================
+    def next_song(self):
+        # Validasi: Tidak bisa pindah lagu jika belum ada lagu yang sedang aktif
+        if self.current is None:
+            print("Belum ada lagu diputar.")
+            return
+
+        # KONDISI 1: Jika fitur acak (Shuffle) aktif
+        if self.shuffle:
+            all_nodes = []
+            curr = self.head
+            # Lakukan traversal untuk mengumpulkan semua node lagu ke dalam list
+            while curr:
+                all_nodes.append(curr)
+                curr = curr.next
+            # Memilih satu node lagu secara acak dari list menggunakan library random
+            if all_nodes:
+                self.current = random.choice(all_nodes)
+                
+        # KONDISI 2: Jika shuffle mati, dan masih ada node lagu berikutnya (Doubly Linked List)
+        elif self.current.next:
+            self.current = self.current.next
+            
+        # KONDISI 3: Jika sudah di ujung playlist, tetapi mode loop diatur ke 'semua'
+        elif self.loop_mode == 'semua':
+            self.current = self.head  # Kembali ke lagu paling pertama
+            
+        # KONDISI 4: Jika mode loop diatur ke 'satu' (mengulang lagu yang sama)
+        elif self.loop_mode == 'satu':
+            pass  # Pointer current tetap diam di node yang sama (stay)
+            
+        # KONDISI 5: Jika sudah di ujung playlist dan mode loop mati (off)
+        else:
+            print("Akhir playlist (loop off).")
+            return # Keluar dari fungsi dan tidak memanggil play_song()
+
+        # Panggil fungsi play_song() untuk memutar lagu baru yang sudah ditentukan pointernya di atas
+        self.play_song()
+
+    # ========================
+    # PREVIOUS
+    # ========================
+    def previous_song(self):
+        # Validasi: Tidak bisa kembali ke lagu sebelumya jika belum ada lagu yang aktif
+        if self.current is None:
+            print("Belum ada lagu diputar.")
+            return
+
+        # KONDISI 1: Jika fitur acak (Shuffle) aktif, lagu sebelumnya juga diacak
+        if self.shuffle:
+            all_nodes = []
+            curr = self.head
+            # Kumpulkan semua node ke dalam list untuk diacak kembali
+            while curr:
+                all_nodes.append(curr)
+                curr = curr.next
+            if all_nodes:
+                self.current = random.choice(all_nodes)
+                
+        # KONDISI 2: Jika shuffle mati, dan masih ada node lagu sebelumnya (Double Linked list .prev)
+        elif self.current.prev:
+            self.current = self.current.prev
+            
+        # KONDISI 3: Jika berada di awal playlist, tetapi mode loop diatur ke 'semua'
+        elif self.loop_mode == 'semua':
+            self.current = self.tail  # Lompat langsung ke lagu paling terakhir (tail)
+            
+        # KONDISI 4: Jika mode loop diatur ke 'satu' (mengulang lagu yang sama)
+        elif self.loop_mode == 'satu':
+            pass  # Pointer current tidak bergeser
+            
+        # KONDISI 5: Jika berada di awal playlist dan mode loop mati (off)
+        else:
+            print("Awal playlist (loop off).")
+            return # Keluar dari fungsi dan tidak memanggil play_song()
+
+        # Panggil fungsi play_song() untuk memutar lagu berdasarkan pointer yang baru
+        self.play_song()
+        
+        # Catatan: Baris print di bawah ini berada di luar kendali alur (unreachable/dead code jika kondisi else terpenuhi), 
+        # kemungkinan sisa debugging atau salah penempatan indentasi.
         print("ID tidak ditemukan!")
         
     # ========================
-    # PAUSE / RESUME
+    # PAUSE / RESUME / STOP
     # ========================
     def pause_song(self):
         if pygame.mixer.music.get_busy():
